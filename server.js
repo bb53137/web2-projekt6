@@ -1,12 +1,26 @@
 import express from "express";
 import webpush from "web-push";
 
+import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 
 app.use(express.json({ limit: "2mb" }));
-app.use(express.static("public"));
+app.use(express.static(path.join(__dirname, "public"), {
+  setHeaders(res, filePath) {
+    if (filePath.endsWith(".css")) res.setHeader("Content-Type", "text/css");
+    if (filePath.endsWith(".js")) res.setHeader("Content-Type", "application/javascript");
+    if (filePath.endsWith(".webmanifest")) res.setHeader("Content-Type", "application/manifest+json");
+  }
+}));
+
 
 
 const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "REPLACE_ME_PUBLIC";
@@ -79,6 +93,11 @@ app.post("/api/notes", async (req, res) => {
   }
 });
 
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html"));
+});
+
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`Server running on http://localhost:${PORT}`);
 });
