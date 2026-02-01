@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="hr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#111827" />
+  <title>WEB2 Projekt 6</title>
+
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="icon" href="/icons/icon-192.png" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <h1>WEB2 Projekt 6</h1>
+    <p class="muted">PWA bilješke s kamerom  offline  background sync   push</p>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>1) Fotka</h2>
+
+      <div class="row">
+        <button id="btnStartCam" class="btn">Uključi kameru</button>
+        <button id="btnSnap" class="btn" disabled>Snimi fotku</button>
+      </div>
+
+      <div class="media">
+        <video id="video" autoplay playsinline muted></video>
+        <canvas id="canvas" hidden></canvas>
+        <img id="preview" alt="Pregled fotke" style="display:none" />
+      </div>
+
+      <div class="hr"></div>
+
+      <p class="muted">Ako kamera ne radi, odaberi sliku (fallback):</p>
+      <input id="fileInput" type="file" accept="image/*" />
+    </section>
+
+    <section class="card">
+      <h2>2) Bilješka</h2>
+      <textarea id="noteText" rows="3" placeholder="Upiši bilješku..."></textarea>
+
+      <div class="row">
+        <button id="btnSave" class="btn primary" disabled>Spremi lokalno</button>
+        <button id="btnSync" class="btn" disabled>Sync odmah</button>
+      </div>
+
+      <div class="row">
+        <button id="btnEnablePush" class="btn">Omogući push</button>
+        <span id="status" class="status muted">Status: spremno</span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Moje bilješke</h2>
+      <ul id="notesList" class="notes"></ul>
+    </section>
+
+    <footer class="foot muted">
+      Savjet: DevTools - Application - Service Workers - Offline - refresh za test offline
+    </footer>
+  </main>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

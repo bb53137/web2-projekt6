@@ -1,0 +1,15 @@
+{
+  "name": "web2-projekt6",
+  "version": "1.0.0",
+  "description": "WEB2 projekt PWA aplikacija s kamerom, offline i push notifikacijama",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "serve": "node server.js",
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "web-push": "^3.6.7"
+  }
+}
