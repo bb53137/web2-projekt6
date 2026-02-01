@@ -34,21 +34,25 @@ function isLocalhost() {
 function updateButtons(unsyncedCount) {
   const online = navigator.onLine;
 
-  //sync - samo online, ima nesyncanih
+  //synx samo online, ima nesyncanih
   els.btnSync.disabled = !(online && unsyncedCount > 0);
 
-  //push - na localhost ugašen (push treba HTTPS)
-  if (isLocalhost()) {
+  //push
+  //mora biti online
+  //mora biti HTTPS (nije localhost)
+  if (!online) {
+    els.btnEnablePush.disabled = true;
+    els.btnEnablePush.title = "Push se može omogućiti samo online.";
+  } else if (isLocalhost()) {
     els.btnEnablePush.disabled = true;
     els.btnEnablePush.title = "Push radi tek na HTTPS (Render).";
   } else {
-    //na renderu omogućen kad dodamo pravi push flow
     els.btnEnablePush.disabled = false;
     els.btnEnablePush.title = "";
   }
 }
 
-//service eorker registracija
+//service worker registracija
 async function initSW() {
   if (!("serviceWorker" in navigator)) {
     setStatus("Service Worker nije podržan.");
@@ -238,11 +242,82 @@ async function renderNotes() {
 }
 
 //push (tek na Renderu)
-async function enablePush() {
-  setStatus("Push će se završiti na Renderu (HTTPS i VAPID).");
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+  return outputArray;
 }
 
-// Init
+async function enablePush() {
+  //offline - nema 
+  if (!navigator.onLine) {
+    setStatus("Offline si. Push se može omogućiti samo online.");
+    return;
+  }
+
+  //mora biti HTTPS 
+  if (location.protocol !== "https:" && location.hostname !== "localhost") {
+    setStatus("Push radi samo na HTTPS (Render).");
+    return;
+  }
+
+  if (!("serviceWorker" in navigator)) {
+    setStatus("Service Worker nije podržan.");
+    return;
+  }
+
+  if (!("PushManager" in window)) {
+    setStatus("Push nije podržan u ovom pregledniku.");
+    return;
+  }
+
+  try {
+    //traži dozvolu
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      setStatus("Push nije dopušten (permission denied).");
+      return;
+    }
+
+    //dohvat VAPID public keya sa servera
+    const keyRes = await fetch("/api/vapidPublicKey");
+    const { publicKey } = await keyRes.json();
+
+    if (!publicKey || publicKey.startsWith("REPLACE_ME")) {
+      setStatus("Nema VAPID ključa na serveru (provjeri Render ENV).");
+      return;
+    }
+
+    const reg = await navigator.serviceWorker.ready;
+
+    //subscribe
+    const sub = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey)
+    });
+
+    //pošalji subscription serveru
+    const res = await fetch("/api/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(sub)
+    });
+
+    if (res.ok) {
+      setStatus("Push omogućen");
+    } else {
+      setStatus("Greška kod spremanja subscriptiona.");
+    }
+  } catch {
+    setStatus("Ne mogu omogućiti push (greška).");
+  }
+}
+
+
+//Init
 async function init() {
   await initSW();
 
