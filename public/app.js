@@ -18,6 +18,8 @@ const els = {
 let stream = null;
 let currentImageBlob = null;
 let swReg = null;
+let pushEnabled = false;
+
 
 function setStatus(msg) {
   els.status.textContent = `Status: ${msg}`;
@@ -33,7 +35,7 @@ function isLocalhost() {
 
 function updateButtons(unsyncedCount) {
   const online = navigator.onLine;
-
+  const httpsOk = location.protocol === "https:" || isLocalhost();
   //synx samo online, ima nesyncanih
   els.btnSync.disabled = !(online && unsyncedCount > 0);
 
@@ -43,11 +45,11 @@ function updateButtons(unsyncedCount) {
   if (!online) {
     els.btnEnablePush.disabled = true;
     els.btnEnablePush.title = "Push se može omogućiti samo online.";
-  } else if (isLocalhost()) {
+  } else if (!httpsOk) {
     els.btnEnablePush.disabled = true;
     els.btnEnablePush.title = "Push radi tek na HTTPS (Render).";
   } else {
-    els.btnEnablePush.disabled = false;
+    els.btnEnablePush.disabled = pushEnabled;
     els.btnEnablePush.title = "";
   }
 }
@@ -65,7 +67,7 @@ async function initSW() {
 //kamera (native API)
 async function startCamera() {
   if (!supportsCamera()) {
-    setStatus("Kamera nije podržana - koristi fallback odabir slike.");
+    setStatus("Kamera nije podržana, koristi fallback odabir slike.");
     return;
   }
   try {
@@ -74,7 +76,7 @@ async function startCamera() {
     els.btnSnap.disabled = false;
     setStatus("Kamera uključena.");
   } catch {
-    setStatus("Nema dozvole za kameru - koristi fallback odabir slike.");
+    setStatus("Nema dozvole za kameru, koristi fallback odabir slike.");
   }
 }
 
@@ -136,17 +138,30 @@ async function saveLocal() {
   els.preview.style.display = "none";
   els.btnSave.disabled = true;
 
-  //pokušaj automat background sync
-  if (swReg && "sync" in swReg) {
+
+
+  if (navigator.onLine) {
+    setStatus("Spremljeno. Sinkroniziram...");
+  
     try {
-      await swReg.sync.register("sync-notes");
-      setStatus("Spremljeno. Auto sync će se izvršiti kad bude online ");
+      await manualSync();
     } catch {
-      setStatus("Spremljeno. Auto sync nije uspio, koristi Sync odmah.");
+    
     }
   } else {
-    setStatus("Spremljeno. BG sync nije podržan,  koristi Sync odmah.");
+  
+    if (swReg && "sync" in swReg) {
+      try {
+        await swReg.sync.register("sync-notes");
+        setStatus("Spremljeno offline. Auto sync kad se vrati internet");
+      } catch {
+        setStatus("Spremljeno offline. Auto sync nije uspio, koristi Sync odmah kad bude online.");
+      }
+    } else {
+      setStatus("Spremljeno offline. BG sync nije podržan, koristi Sync odmah kad bude online.");
+    }
   }
+
 
   await renderNotes();
 }
@@ -259,10 +274,11 @@ async function enablePush() {
   }
 
   //mora biti HTTPS 
-  if (location.protocol !== "https:" && location.hostname !== "localhost") {
+  if (location.protocol !== "https:" && !isLocalhost()) {
     setStatus("Push radi samo na HTTPS (Render).");
     return;
-  }
+} 
+
 
   if (!("serviceWorker" in navigator)) {
     setStatus("Service Worker nije podržan.");
@@ -308,6 +324,11 @@ async function enablePush() {
 
     if (res.ok) {
       setStatus("Push omogućen");
+      els.btnEnablePush.disabled = true;
+      els.btnEnablePush.textContent = "Push omogućen";
+      pushEnabled = true;
+
+
     } else {
       setStatus("Greška kod spremanja subscriptiona.");
     }
@@ -317,9 +338,28 @@ async function enablePush() {
 }
 
 
+
+async function restorePushState() {
+  try {
+    if (!("serviceWorker" in navigator)) return;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      pushEnabled = true;
+      els.btnEnablePush.disabled = true;
+      els.btnEnablePush.textContent = "Push omogućen";
+    }
+  } catch {
+   
+  }
+}
+
+
 //Init
 async function init() {
   await initSW();
+  await restorePushState();
+
 
   if (!supportsCamera()) {
     setStatus("Kamera nije podržana, koristi fallback odabir slike.");
@@ -349,5 +389,9 @@ window.addEventListener("offline", async () => {
   setStatus("Offline ");
   await renderNotes();
 });
+
+
+
+
 
 init();

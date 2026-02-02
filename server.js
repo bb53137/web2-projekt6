@@ -28,7 +28,7 @@ const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "REPLACE_ME_PRIVATE";
 const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:test@example.com";
 
 if (VAPID_PUBLIC_KEY.startsWith("REPLACE_ME") || VAPID_PRIVATE_KEY.startsWith("REPLACE_ME")) {
-  console.log("⚠️  Nema VAPID ključeva. Push će raditi tek kad postaviš VAPID ključeve.");
+  console.log("Nema VAPID ključeva. Push će raditi tek kad postaviš VAPID ključeve.");
 } else {
   webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 }
